@@ -1,0 +1,81 @@
+#!/bin/bash
+
+NAME=
+MARGIN=1800
+INTERVAL=600
+RULE='(.extended_entities.media | length) == 0 or (.text | startswith("."))'
+
+usage() {
+    cat <<EOM
+SYNOPSIS
+  tw-clean [OPTIONS] <name>
+
+OPTIONS
+  --margin <int>        enumerate tweets older than <int> sec (default=$MARGIN)
+  --interval <int>      check every <int> sec (default=$INTERVAL)
+  --rule <jq-language>  remove rule in jq (default=$RULE)
+EOM
+    exit
+}
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --margin | -m )
+            MARGIN=$2
+            shift 2
+            ;;
+        --interval | -i | -I )
+            INTERVAL=$2
+            shift 2
+            ;;
+        --rule | -r | -R )
+            RULE=$2
+            shift 2
+            ;;
+        -h | --help )
+            usage
+            ;;
+        * )
+            NAME=$1
+            shift 1
+            ;;
+    esac
+done
+
+if [ -z "$NAME" ]; then
+    usage
+fi
+
+tw-timeline() {
+    tw-lock
+    tw-cd "$NAME"
+    twurl "/1.1/statuses/user_timeline.json?count=200&screen_name=$NAME"
+    tw-lock -u
+}
+
+tw-rm() {
+    tw-lock
+    tw-cd "$NAME"
+    twurl -XPOST "/1.1/statuses/destroy/$1.json"
+    tw-lock -u
+}
+
+while :; do
+
+    cur=$(date +%s)
+    s=$((cur - MARGIN))
+
+    tw-timeline |
+    jq -r ".[] | if $RULE then
+        \"echo \$(date -d \\\"\\(.created_at)\\\" +%s) \\(.id_str)\"
+    else
+        empty
+    end" | sh |
+    while read t id; do
+        if [ "$t" -lt "$s" ]; then
+            tw-rm "$id" | jq -r '"\(.id_str) \(.text)"'
+        fi
+    done
+
+    sleep ${INTERVAL}
+done
