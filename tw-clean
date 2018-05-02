@@ -3,7 +3,7 @@
 NAME=
 MARGIN=1800
 INTERVAL=600
-RULE='(.extended_entities.media | length) == 0 or (.text | startswith("."))'
+RULE='(.extended_entities.media | length) == 0 and (.text | startswith("@") | not)'
 
 usage() {
     cat <<EOM
