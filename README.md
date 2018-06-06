@@ -4,8 +4,8 @@ Keep Your Tweets Clean
 
 ## required
 
-- [twitter/twurl](https://github.com/twitter/twurl) (authorized)
-    - [cympfh/tw](https://github.com/cympfh/tw)
+- [twitter/twurl](https://github.com/twitter/twurl)
+- [cympfh/tw](https://github.com/cympfh/tw) 
 - [jq](https://stedolan.github.io/jq/)
 
 ## usage examples
