@@ -1,0 +1,88 @@
+#!/bin/bash
+
+NAME=
+MAX=150
+INTERVAL=600
+DRYRUN=0
+
+usage() {
+    cat <<EOM
+SYNOPSIS
+  tw-trim [OPTIONS] <name> <count>
+
+If the number of statuses exceeds <count>, force to remove the old statuses.
+(<count> must be less than 200 !!)
+
+OPTIONS
+  --dry-run, -N         dry run
+  --interval <int>      check every <int> sec (default=$INTERVAL)
+EOM
+    exit
+}
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -h | --help )
+            usage
+            ;;
+        --dry-run | -N )
+            DRYRUN=1
+            shift
+            ;;
+        --interval | -i | -I )
+            INTERVAL=$2
+            shift 2
+            ;;
+        * )
+            if [ -z "$NAME" ]; then
+                NAME=$1
+            else
+                MAX=$1
+            fi
+            shift
+            ;;
+    esac
+done
+
+if [ -z "$NAME" ]; then
+    usage
+fi
+
+tw-count() {
+    twurl "/1.1/users/show.json?screen_name=$NAME" | jq -r .statuses_count
+}
+tw-count
+tw-timeline() {
+    twurl "/1.1/statuses/user_timeline.json?count=200&screen_name=$NAME"
+}
+
+tw-rm() {
+    twurl -XPOST "/1.1/statuses/destroy/$1.json"
+}
+
+while :; do
+
+    if [ $(tw-count) -gt $MAX ]; then
+
+        tw-cd "$NAME"
+        tw-lock
+
+        tw-timeline |
+            jq -r ".[] | .id_str" |
+            tail -n +"$(( MAX + 1 ))" |
+            while read id; do
+                tw-cd "$NAME"
+                tw-lock
+                if [ $DRYRUN -eq 1 ]; then
+                    echo "Remove $id (dry-run)"
+                    tw-show "$id" | jq -r '"\(.id_str) \(.text)"'
+                else
+                    tw-rm "$id" | jq -r '"\(.id_str) \(.text)"'
+                fi
+            done
+
+        tw-lock -u
+
+    fi
+    sleep ${INTERVAL}
+done

@@ -20,21 +20,26 @@ Remove all `cympfh` 's tweets (authorized in `twurl`) older than `1800` sec (=30
 
 The rule is written in `jq`.
 
+#### Examples
+
+Remove all tweets without media/images
+
 ```bash
 --rule (.extended_entities.media | length) == 0
 ```
 
-no media (images)
+Tweets (without media/images) OR (text starts with `.`)
 
 ```bash
 --rule (.extended_entities.media | length) == 0 or (.text | startswith("."))
 ```
 
-no media OR tweets start with `.`
+Tweets NOT (text start with `@`)
 
 ```bash
 --rule (.text | startswith("@") | not)
 ```
 
-tweets NOT start with `@`
+# tw-trim
 
+Just Recent `n` tweets will remain.
